@@ -155,7 +155,7 @@ export function registerInteractionCreateEvent(client: Client): void {
         ? error.userMessage
         : 'An unexpected error occurred. Please try again later.';
 
-      console.error('Interaction error:', error);
+      console.error('Interaction error:', error instanceof Error ? error.message : error, error);
 
       if (interaction.isRepliable()) {
         if (interaction.deferred || interaction.replied) {

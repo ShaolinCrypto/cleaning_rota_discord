@@ -1,13 +1,14 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { loadConfig } from './config';
 import { registerSlashCommands } from './commands/definitions';
-import { initDatabase, closeDatabase } from './db';
+import { initDatabase, closeDatabase, logDatabaseStats } from './db';
 import { registerReadyEvent } from './events/ready';
 import { registerInteractionCreateEvent } from './events/interactionCreate';
 
 async function main(): Promise<void> {
   const config = loadConfig();
   initDatabase(config);
+  logDatabaseStats();
 
   await registerSlashCommands(config);
 

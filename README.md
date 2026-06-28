@@ -41,7 +41,7 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
    | `CLIENT_ID` | Application client ID |
    | `ROTA_CHANNEL_ID` | Channel for rota slash commands and weekly assignment posts |
    | `BIN_CHANNEL_ID` | Channel where `/bins` and `/binping` can be used |
-   | `DATABASE_PATH` | Path to SQLite database file (default: `./data/rota.db`) |
+   | `DATABASE_PATH` | Path to SQLite database file (default: `./data/rota.db` locally, `/app/data/rota.db` in production) |
    | `PREMISES_ID` | Leeds premises ID for `/bins` (via bins.felixyeung.com) |
 
 3. **Register slash commands (optional locally)**
@@ -79,6 +79,20 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
    ```
 
    The bot connects via the Discord gateway (not webhooks). No HTTP port is required. On startup it registers slash commands using your runtime `DISCORD_TOKEN`, then connects to Discord.
+
+### Northflank persistence (important)
+
+SQLite data must survive restarts and be shared across all bot instances:
+
+1. **Run exactly 1 instance/replica** — multiple instances each have their own database file, so `/task list` and `/rota list` can appear empty even after a successful create/add on another instance.
+2. **Mount a volume** at `/app/data` and set `DATABASE_PATH=/app/data/rota.db`.
+3. Check startup logs for:
+   ```
+   Database initialized at /app/data/rota.db
+   Database contains 3 task(s) and 2 rota user(s).
+   ```
+
+If the task/user counts are `0` after you know you added data, the volume is not mounted correctly or you are running more than one replica.
 
 ## Slash Commands
 

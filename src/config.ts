@@ -26,7 +26,9 @@ export function loadConfig(): AppConfig {
     clientId: requireEnv('CLIENT_ID'),
     rotaChannelId: requireEnv('ROTA_CHANNEL_ID'),
     binChannelId: requireEnv('BIN_CHANNEL_ID'),
-    databasePath: process.env.DATABASE_PATH ?? './data/rota.db',
+    databasePath:
+      process.env.DATABASE_PATH ??
+      (process.env.NODE_ENV === 'production' ? '/app/data/rota.db' : './data/rota.db'),
     premisesId: optionalEnv('PREMISES_ID'),
   };
 }

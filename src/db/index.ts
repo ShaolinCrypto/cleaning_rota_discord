@@ -62,7 +62,20 @@ export function initDatabase(config: AppConfig): DatabaseSync {
     db.prepare('INSERT INTO rota_state (id, rotation_index) VALUES (1, 0)').run();
   }
 
+  console.log(`Database initialized at ${config.databasePath}`);
+
   return db;
+}
+
+export function logDatabaseStats(): void {
+  const database = getDatabase();
+  const taskCount = (
+    database.prepare('SELECT COUNT(*) AS count FROM tasks').get() as { count: number }
+  ).count;
+  const rotaCount = (
+    database.prepare('SELECT COUNT(*) AS count FROM rota_users').get() as { count: number }
+  ).count;
+  console.log(`Database contains ${taskCount} task(s) and ${rotaCount} rota user(s).`);
 }
 
 export function getDatabase(): DatabaseSync {
