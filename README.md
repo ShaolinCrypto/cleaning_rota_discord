@@ -44,13 +44,17 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
    | `DATABASE_PATH` | Path to SQLite database file (default: `./data/rota.db`) |
    | `PREMISES_ID` | Leeds premises ID for `/bins` (via bins.felixyeung.com) |
 
-3. **Register slash commands**
+3. **Register slash commands (optional locally)**
+
+   Commands are registered automatically each time the bot starts (including in Docker/Northflank).
+
+   To register without starting the bot:
 
    ```bash
    npm run register-commands
    ```
 
-   Commands are registered **globally** (no `GUILD_ID` required). Global commands can take up to an hour to propagate after registration.
+   Commands are registered **globally** (no `GUILD_ID` required). Global commands can take up to an hour to propagate after the first registration.
 
 4. **Run the bot**
 
@@ -74,7 +78,7 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
    docker run --env-file .env cleaning-rota-bot
    ```
 
-   The bot connects via the Discord gateway (not webhooks). No HTTP port is required.
+   The bot connects via the Discord gateway (not webhooks). No HTTP port is required. On startup it registers slash commands using your runtime `DISCORD_TOKEN`, then connects to Discord.
 
 ## Slash Commands
 
@@ -157,7 +161,7 @@ Ensure the bot has these permissions in your guild, rota channel, and bin channe
 - Embed Links
 - Use Application Commands
 
-`Guild Members` intent is enabled for member lookups when rendering embeds.
+Admin and assignment button checks use the member data included with each interaction (no privileged intents required).
 
 ## CSV Report Format
 

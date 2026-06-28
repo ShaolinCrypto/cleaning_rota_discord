@@ -1,5 +1,6 @@
-import { Client, GatewayIntentBits, Partials } from 'discord.js';
+import { Client, GatewayIntentBits } from 'discord.js';
 import { loadConfig } from './config';
+import { registerSlashCommands } from './commands/definitions';
 import { initDatabase, closeDatabase } from './db';
 import { registerReadyEvent } from './events/ready';
 import { registerInteractionCreateEvent } from './events/interactionCreate';
@@ -8,9 +9,10 @@ async function main(): Promise<void> {
   const config = loadConfig();
   initDatabase(config);
 
+  await registerSlashCommands(config);
+
   const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
-    partials: [Partials.GuildMember],
+    intents: [GatewayIntentBits.Guilds],
   });
 
   registerReadyEvent(client, config.rotaChannelId);

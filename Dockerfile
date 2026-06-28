@@ -22,4 +22,5 @@ RUN mkdir -p /app/data
 
 ENV NODE_ENV=production
 
+# Slash commands are registered at container start (needs DISCORD_TOKEN from runtime env).
 CMD ["npm", "start"]
