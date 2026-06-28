@@ -1,0 +1,33 @@
+{
+  "name": "cleaning-rota-discord",
+  "version": "1.0.0",
+  "description": "Discord bot for managing a weekly cleaning rota",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "register-commands": "tsx src/register-commands.ts"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "cleaning",
+    "rota"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.6.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.32",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
