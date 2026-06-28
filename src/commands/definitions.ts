@@ -16,29 +16,13 @@ export const commandDefinitions = [
   new SlashCommandBuilder()
     .setName('task')
     .setDescription('Manage cleaning tasks')
-    .addSubcommand((sub) =>
-      sub
-        .setName('create')
-        .setDescription('Create a new cleaning task')
-        .addStringOption((option) =>
-          option.setName('title').setDescription('Task title').setRequired(true),
-        )
-        .addStringOption((option) =>
-          option.setName('description').setDescription('Task description').setRequired(true),
-        ),
-    )
+    .addSubcommand((sub) => sub.setName('create').setDescription('Create a new cleaning task'))
     .addSubcommand((sub) =>
       sub
         .setName('edit')
         .setDescription('Edit an existing cleaning task')
         .addIntegerOption((option) =>
           option.setName('task_id').setDescription('Task ID').setRequired(true),
-        )
-        .addStringOption((option) =>
-          option.setName('title').setDescription('Updated task title').setRequired(true),
-        )
-        .addStringOption((option) =>
-          option.setName('description').setDescription('Updated task description').setRequired(true),
         ),
     )
     .addSubcommand((sub) =>
@@ -49,7 +33,10 @@ export const commandDefinitions = [
           option.setName('task_id').setDescription('Task ID').setRequired(true),
         ),
     )
-    .addSubcommand((sub) => sub.setName('list').setDescription('List all cleaning tasks')),
+    .addSubcommand((sub) => sub.setName('list').setDescription('List all cleaning tasks'))
+    .addSubcommand((sub) =>
+      sub.setName('manage').setDescription('Manage cleaning tasks with buttons and forms'),
+    ),
   new SlashCommandBuilder()
     .setName('rota')
     .setDescription('Manage the cleaning rota')

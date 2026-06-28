@@ -86,8 +86,9 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
 
 | Command | Description | Permissions |
 | --- | --- | --- |
-| `/task create title description` | Create a cleaning task | Admin |
-| `/task edit task_id title description` | Edit a task | Admin |
+| `/task create` | Create a cleaning task (modal form) | Admin |
+| `/task edit task_id` | Edit a task (pre-filled modal form) | Admin |
+| `/task manage` | Manage tasks with buttons and select menu | Admin |
 | `/task remove task_id` | Deactivate a task | Admin |
 | `/task list` | List all tasks | Admin |
 | `/rota add user` | Add a user to the rota | Admin |

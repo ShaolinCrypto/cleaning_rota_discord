@@ -3,9 +3,21 @@ import {
   type ChatInputCommandInteraction,
   type Client,
   type Interaction,
+  type ModalSubmitInteraction,
+  type StringSelectMenuInteraction,
 } from 'discord.js';
 import { handleCommand } from '../commands';
 import { handleBinCommand, isBinCommand } from '../commands/bin';
+import {
+  handleTaskButton,
+  handleTaskCommand,
+  handleTaskModalSubmit,
+  handleTaskSelectMenu,
+  isTaskManageButton,
+  isTaskManageSelect,
+  isTaskModal,
+  taskUsesModalOrComponents,
+} from '../commands/task';
 import {
   getAssignmentById,
   refreshAssignmentMessage,
@@ -15,7 +27,7 @@ import { parseButtonCustomId } from '../utils/embeds';
 import { requireAdminForButton, requireAssignedUser } from '../utils/permissions';
 import { isBotError, ValidationError } from '../utils/errors';
 
-async function handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
+async function handleAssignmentButtonInteraction(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseButtonCustomId(interaction.customId);
   if (!parsed) {
     return;
@@ -77,12 +89,29 @@ async function handleButtonInteraction(interaction: ButtonInteraction): Promise<
   }
 }
 
+function shouldDeferRotaCommand(interaction: ChatInputCommandInteraction): boolean {
+  if (interaction.commandName !== 'task') {
+    return true;
+  }
+
+  const subcommand = interaction.options.getSubcommand(false);
+  if (!subcommand) {
+    return true;
+  }
+
+  return !taskUsesModalOrComponents(subcommand);
+}
+
 export function registerInteractionCreateEvent(client: Client): void {
   client.on('interactionCreate', async (interaction: Interaction) => {
     const isCommand = interaction.isChatInputCommand();
-    const isButton = interaction.isButton() && interaction.customId.startsWith('assignment:');
+    const isAssignmentButton =
+      interaction.isButton() && interaction.customId.startsWith('assignment:');
+    const isTaskButton = interaction.isButton() && isTaskManageButton(interaction.customId);
+    const isTaskSelect = interaction.isStringSelectMenu() && isTaskManageSelect(interaction.customId);
+    const isTaskModalSubmit = interaction.isModalSubmit() && isTaskModal(interaction.customId);
 
-    if (!isCommand && !isButton) {
+    if (!isCommand && !isAssignmentButton && !isTaskButton && !isTaskSelect && !isTaskModalSubmit) {
       return;
     }
 
@@ -95,13 +124,31 @@ export function registerInteractionCreateEvent(client: Client): void {
           return;
         }
 
-        await commandInteraction.deferReply({ ephemeral: true });
+        if (shouldDeferRotaCommand(commandInteraction)) {
+          await commandInteraction.deferReply({ ephemeral: true });
+        }
+
         await handleCommand(commandInteraction);
         return;
       }
 
-      if (isButton) {
-        await handleButtonInteraction(interaction as ButtonInteraction);
+      if (isTaskModalSubmit) {
+        await handleTaskModalSubmit(interaction as ModalSubmitInteraction);
+        return;
+      }
+
+      if (isTaskButton) {
+        await handleTaskButton(interaction as ButtonInteraction);
+        return;
+      }
+
+      if (isTaskSelect) {
+        await handleTaskSelectMenu(interaction as StringSelectMenuInteraction);
+        return;
+      }
+
+      if (isAssignmentButton) {
+        await handleAssignmentButtonInteraction(interaction as ButtonInteraction);
       }
     } catch (error) {
       const message = isBotError(error)

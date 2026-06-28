@@ -2,6 +2,8 @@ import {
   ChatInputCommandInteraction,
   ButtonInteraction,
   GuildMember,
+  ModalSubmitInteraction,
+  StringSelectMenuInteraction,
   PermissionFlagsBits,
 } from 'discord.js';
 import { PermissionError } from './errors';
@@ -14,7 +16,11 @@ export function isAdmin(member: GuildMember | null): boolean {
 }
 
 export async function requireAdmin(
-  interaction: ChatInputCommandInteraction | ButtonInteraction,
+  interaction:
+    | ChatInputCommandInteraction
+    | ButtonInteraction
+    | ModalSubmitInteraction
+    | StringSelectMenuInteraction,
 ): Promise<void> {
   const member = interaction.member as GuildMember | null;
   if (!isAdmin(member)) {
