@@ -10,9 +10,8 @@ export async function handleReportCommand(interaction: ChatInputCommandInteracti
     name: `cleaning-rota-report-${new Date().toISOString().slice(0, 10)}.csv`,
   });
 
-  await interaction.reply({
+  await interaction.editReply({
     content: 'Assignment report generated.',
     files: [attachment],
-    ephemeral: true,
   });
 }

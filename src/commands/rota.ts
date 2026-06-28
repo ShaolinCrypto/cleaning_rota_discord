@@ -11,36 +11,33 @@ export async function handleRotaCommand(interaction: ChatInputCommandInteraction
     case 'add': {
       const user = interaction.options.getUser('user', true);
       addRotaUser(user.id);
-      await interaction.reply({
+      await interaction.editReply({
         content: `Added ${user} to the cleaning rota.`,
-        ephemeral: true,
       });
       break;
     }
     case 'remove': {
       const user = interaction.options.getUser('user', true);
       removeRotaUser(user.id);
-      await interaction.reply({
+      await interaction.editReply({
         content: `Removed ${user} from the cleaning rota.`,
-        ephemeral: true,
       });
       break;
     }
     case 'list': {
       const users = listRotaUsers();
       if (users.length === 0) {
-        await interaction.reply({ content: 'No users on the rota.', ephemeral: true });
+        await interaction.editReply({ content: 'No users on the rota.' });
         return;
       }
 
       const lines = users.map((entry, index) => `${index + 1}. <@${entry.userId}> (\`${entry.userId}\`)`);
-      await interaction.reply({
+      await interaction.editReply({
         content: `**Rota Users**\n${lines.join('\n')}`,
-        ephemeral: true,
       });
       break;
     }
     default:
-      await interaction.reply({ content: 'Unknown subcommand.', ephemeral: true });
+      await interaction.editReply({ content: 'Unknown subcommand.' });
   }
 }
