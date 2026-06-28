@@ -13,7 +13,7 @@ async function main(): Promise<void> {
     partials: [Partials.GuildMember],
   });
 
-  registerReadyEvent(client, config.assignmentChannelId);
+  registerReadyEvent(client, config.rotaChannelId);
   registerInteractionCreateEvent(client);
 
   const shutdown = (): void => {

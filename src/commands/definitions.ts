@@ -87,6 +87,6 @@ export async function registerSlashCommands(config: AppConfig): Promise<void> {
   const rest = new REST({ version: '10' }).setToken(config.discordToken);
   const body = commandDefinitions.map((command) => command.toJSON());
 
-  await rest.put(Routes.applicationGuildCommands(config.clientId, config.guildId), { body });
-  console.log(`Registered ${body.length} slash command(s) for guild ${config.guildId}.`);
+  await rest.put(Routes.applicationCommands(config.clientId), { body });
+  console.log(`Registered ${body.length} global slash command(s).`);
 }

@@ -18,10 +18,9 @@ async function replyBinsError(
 
 export async function handleBinsCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   const config = loadConfig();
-  const premisesId = config.premisesId || config.uprn;
 
-  if (!premisesId) {
-    await replyBinsError(interaction, 'PREMISES_ID (or UPRN) is not configured on the server.');
+  if (!config.premisesId) {
+    await replyBinsError(interaction, 'PREMISES_ID is not configured on the server.');
     return;
   }
 

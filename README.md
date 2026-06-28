@@ -39,16 +39,18 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
    | --- | --- |
    | `DISCORD_TOKEN` | Bot token from the Discord Developer Portal |
    | `CLIENT_ID` | Application client ID |
-   | `GUILD_ID` | Guild ID where commands are registered |
-   | `ASSIGNMENT_CHANNEL_ID` | Channel ID for weekly assignment posts |
+   | `ROTA_CHANNEL_ID` | Channel for rota slash commands and weekly assignment posts |
+   | `BIN_CHANNEL_ID` | Channel where `/bins` and `/binping` can be used |
    | `DATABASE_PATH` | Path to SQLite database file (default: `./data/rota.db`) |
-   | `PREMISES_ID` | Leeds premises ID for `/bins` (preferred) |
-   | `UPRN` | Fallback premises identifier if `PREMISES_ID` is not set |
+   | `PREMISES_ID` | Leeds premises ID for `/bins` (via bins.felixyeung.com) |
+
 3. **Register slash commands**
 
    ```bash
    npm run register-commands
    ```
+
+   Commands are registered **globally** (no `GUILD_ID` required). Global commands can take up to an hour to propagate after registration.
 
 4. **Run the bot**
 
@@ -76,7 +78,7 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
 
 ## Slash Commands
 
-### Cleaning rota (admin unless noted)
+### Cleaning rota (admin; use in `ROTA_CHANNEL_ID` only)
 
 | Command | Description | Permissions |
 | --- | --- | --- |
@@ -89,16 +91,18 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
 | `/rota list` | List rota users | Admin |
 | `/report` | Download CSV assignment history | Admin |
 
-### Leeds bins
+### Leeds bins (use in `BIN_CHANNEL_ID` only)
 
 | Command | Description | Permissions |
 | --- | --- | --- |
 | `/bins` | Show upcoming Leeds bin collection dates | Everyone |
 | `/binping` | Test bot responsiveness | Everyone |
 
-`/bins` uses `PREMISES_ID` first, then falls back to `UPRN`. Data is fetched from:
+`/bins` requires `PREMISES_ID` and fetches data from:
 
-`https://bins.felixyeung.com/api/jobs?premises=<PREMISES_ID_OR_UPRN>`
+`https://bins.felixyeung.com/api/jobs?premises=<PREMISES_ID>`
+
+Rota commands (`/task`, `/rota`, `/report`) only work in `ROTA_CHANNEL_ID`. Bin commands (`/bins`, `/binping`) only work in `BIN_CHANNEL_ID`.
 
 ## Weekly Schedule
 
@@ -117,7 +121,7 @@ Cron format: `minute hour day-of-month month day-of-week`
 ## Assignment Workflow
 
 1. The scheduler creates one assignment per rota user (up to the number of active tasks).
-2. Each assignment is posted as an embed in `ASSIGNMENT_CHANNEL_ID`.
+2. Each assignment is posted as an embed in `ROTA_CHANNEL_ID`.
 3. The assigned user clicks **Accept**, then **Confirm Complete**.
 4. Admins can click **Not Complete** to reject an incomplete assignment.
 5. Embed status and buttons update after each action.
@@ -146,7 +150,7 @@ src/
 
 ## Bot Permissions
 
-Ensure the bot has these permissions in your guild and assignment channel:
+Ensure the bot has these permissions in your guild, rota channel, and bin channel:
 
 - View Channels
 - Send Messages
@@ -172,7 +176,8 @@ The bot handles common failure cases including:
 - No rota users or active tasks
 - Unequal user/task counts
 - Duplicate rota users
-- Missing or inaccessible assignment channel
+- Wrong channel for rota or bin commands
+- Missing or inaccessible rota channel
 - Permission failures on commands and buttons
 - Database errors
 

@@ -1,4 +1,3 @@
-import { getPremisesId } from '../config';
 import type { AppConfig } from '../types';
 import type { BinCollection, BinsCommandResult } from '../types/bins';
 
@@ -45,12 +44,12 @@ function normaliseBinsResponse(raw: unknown): BinCollection[] {
 }
 
 export async function fetchBinCollections(config: AppConfig): Promise<BinsCommandResult> {
-  const premisesId = getPremisesId(config);
+  const premisesId = config.premisesId;
 
   if (!premisesId) {
     return {
       kind: 'config_error',
-      message: 'PREMISES_ID (or UPRN) is not configured on the server.',
+      message: 'PREMISES_ID is not configured on the server.',
     };
   }
 

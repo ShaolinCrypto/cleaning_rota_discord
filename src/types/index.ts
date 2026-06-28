@@ -45,11 +45,10 @@ export interface ReportRow {
 export interface AppConfig {
   discordToken: string;
   clientId: string;
-  guildId: string;
-  assignmentChannelId: string;
+  rotaChannelId: string;
+  binChannelId: string;
   databasePath: string;
   premisesId?: string;
-  uprn?: string;
 }
 
 export type ButtonAction = 'accept' | 'complete' | 'not_complete';

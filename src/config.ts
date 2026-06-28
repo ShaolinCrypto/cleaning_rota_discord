@@ -24,17 +24,11 @@ export function loadConfig(): AppConfig {
   return {
     discordToken: requireEnv('DISCORD_TOKEN'),
     clientId: requireEnv('CLIENT_ID'),
-    guildId: requireEnv('GUILD_ID'),
-    assignmentChannelId: requireEnv('ASSIGNMENT_CHANNEL_ID'),
+    rotaChannelId: requireEnv('ROTA_CHANNEL_ID'),
+    binChannelId: requireEnv('BIN_CHANNEL_ID'),
     databasePath: process.env.DATABASE_PATH ?? './data/rota.db',
     premisesId: optionalEnv('PREMISES_ID'),
-    uprn: optionalEnv('UPRN'),
   };
-}
-
-/** Returns PREMISES_ID if set, otherwise UPRN. */
-export function getPremisesId(config: AppConfig): string | undefined {
-  return config.premisesId || config.uprn;
 }
 
 /**

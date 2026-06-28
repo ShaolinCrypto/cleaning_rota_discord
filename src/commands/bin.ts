@@ -1,4 +1,6 @@
 import type { ChatInputCommandInteraction } from 'discord.js';
+import { loadConfig } from '../config';
+import { requireBinChannel } from '../utils/channels';
 import { handleBinsCommand } from './bins';
 import { handleBinpingCommand } from './binping';
 
@@ -9,6 +11,9 @@ export function isBinCommand(commandName: string): boolean {
 }
 
 export async function handleBinCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+  const config = loadConfig();
+  requireBinChannel(interaction, config.binChannelId);
+
   switch (interaction.commandName) {
     case 'bins':
       await handleBinsCommand(interaction);

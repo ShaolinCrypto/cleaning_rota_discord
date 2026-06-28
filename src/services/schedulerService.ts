@@ -3,7 +3,7 @@ import type { Client } from 'discord.js';
 import { TIMEZONE, WEEKLY_ASSIGNMENT_CRON } from '../config';
 import { postWeeklyAssignments, getWeekDate } from './assignmentService';
 
-export function startWeeklyScheduler(client: Client, assignmentChannelId: string): void {
+export function startWeeklyScheduler(client: Client, rotaChannelId: string): void {
   if (!cron.validate(WEEKLY_ASSIGNMENT_CRON)) {
     throw new Error(`Invalid cron expression: ${WEEKLY_ASSIGNMENT_CRON}`);
   }
@@ -15,7 +15,7 @@ export function startWeeklyScheduler(client: Client, assignmentChannelId: string
       console.log(`Running weekly assignment job for week ${weekDate}...`);
 
       try {
-        const result = await postWeeklyAssignments(client, assignmentChannelId, weekDate);
+        const result = await postWeeklyAssignments(client, rotaChannelId, weekDate);
         console.log(
           `Posted ${result.assignments.length} assignment(s) for week ${weekDate}.`,
         );
