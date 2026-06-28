@@ -18,3 +18,17 @@ export function requireBinChannel(
     throw new ValidationError(`This command can only be used in <#${binChannelId}>.`);
   }
 }
+
+export function requireRotaOrBinChannel(
+  interaction: ChatInputCommandInteraction,
+  rotaChannelId: string,
+  binChannelId: string,
+): void {
+  if (interaction.channelId === rotaChannelId || interaction.channelId === binChannelId) {
+    return;
+  }
+
+  throw new ValidationError(
+    `This command can only be used in <#${rotaChannelId}> or <#${binChannelId}>.`,
+  );
+}

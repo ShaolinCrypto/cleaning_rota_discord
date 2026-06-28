@@ -16,7 +16,7 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
 ### Leeds bins
 
 - `/bins` — upcoming Leeds bin collection dates via [bins.felixyeung.com](https://bins.felixyeung.com)
-- `/binping` — simple connectivity check
+- `/ping` — simple connectivity check (rota or bin channel)
 ## Requirements
 
 - Node.js 22+ (uses the built-in `node:sqlite` module)
@@ -40,7 +40,7 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
    | `DISCORD_TOKEN` | Bot token from the Discord Developer Portal |
    | `CLIENT_ID` | Application client ID |
    | `ROTA_CHANNEL_ID` | Channel for rota slash commands and weekly assignment posts |
-   | `BIN_CHANNEL_ID` | Channel where `/bins` and `/binping` can be used |
+   | `BIN_CHANNEL_ID` | Channel where `/bins` can be used |
    | `DATABASE_PATH` | Path to SQLite database file (default: `./data/rota.db` locally, `/app/data/rota.db` in production) |
    | `PREMISES_ID` | Leeds premises ID for `/bins` (via bins.felixyeung.com) |
 
@@ -115,13 +115,13 @@ If the task/user counts are `0` after you know you added data, the volume is not
 | Command | Description | Permissions |
 | --- | --- | --- |
 | `/bins` | Show upcoming Leeds bin collection dates | Everyone |
-| `/binping` | Test bot responsiveness | Everyone |
+| `/ping` | Test bot responsiveness | Everyone (rota or bin channel) |
 
 `/bins` requires `PREMISES_ID` and fetches data from:
 
 `https://bins.felixyeung.com/api/jobs?premises=<PREMISES_ID>`
 
-Rota commands (`/task`, `/rota`, `/report`) only work in `ROTA_CHANNEL_ID`. Bin commands (`/bins`, `/binping`) only work in `BIN_CHANNEL_ID`.
+Rota commands (`/task`, `/rota`, `/report`) only work in `ROTA_CHANNEL_ID`. `/bins` only works in `BIN_CHANNEL_ID`. `/ping` works in either channel.
 
 ## Weekly Schedule
 

@@ -65,8 +65,8 @@ export const commandDefinitions = [
     .setDescription('Show upcoming Leeds bin collection dates')
     .setDMPermission(false),
   new SlashCommandBuilder()
-    .setName('binping')
-    .setDescription('Test the Discord interaction endpoint')
+    .setName('ping')
+    .setDescription('Test bot responsiveness')
     .setDMPermission(false),
 ] as const;
 

@@ -7,7 +7,8 @@ import {
   type StringSelectMenuInteraction,
 } from 'discord.js';
 import { handleCommand } from '../commands';
-import { handleBinCommand, isBinCommand } from '../commands/bin';
+import { handleBinsSlashCommand, isBinsCommand } from '../commands/bin';
+import { handlePingSlashCommand, isPingCommand } from '../commands/ping';
 import {
   handleTaskButton,
   handleTaskCommand,
@@ -119,8 +120,13 @@ export function registerInteractionCreateEvent(client: Client): void {
       if (isCommand) {
         const commandInteraction = interaction as ChatInputCommandInteraction;
 
-        if (isBinCommand(commandInteraction.commandName)) {
-          await handleBinCommand(commandInteraction);
+        if (isPingCommand(commandInteraction.commandName)) {
+          await handlePingSlashCommand(commandInteraction);
+          return;
+        }
+
+        if (isBinsCommand(commandInteraction.commandName)) {
+          await handleBinsSlashCommand(commandInteraction);
           return;
         }
 
