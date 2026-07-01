@@ -108,6 +108,7 @@ If the task/user counts are `0` after you know you added data, the volume is not
 | `/rota add user` | Add a user to the rota | Admin |
 | `/rota remove user` | Remove a user from the rota | Admin |
 | `/rota list` | List rota users | Admin |
+| `/rota build` | Generate and post this week's assignments now | Admin |
 | `/report` | Download CSV assignment history | Admin |
 
 ### Leeds bins (use in `BIN_CHANNEL_ID` only)
@@ -125,7 +126,7 @@ Rota commands (`/task`, `/rota`, `/report`) only work in `ROTA_CHANNEL_ID`. `/bi
 
 ## Weekly Schedule
 
-Assignments are posted automatically by a cron scheduler.
+Assignments are posted automatically by a cron scheduler. Admins can also run `/rota build` in `ROTA_CHANNEL_ID` to generate and post the current week's rota immediately (for example after changing rota users or tasks). If assignments already exist for this week, `/rota build` replaces them.
 
 To change when assignments run, edit `WEEKLY_ASSIGNMENT_CRON` in `src/config.ts`:
 
@@ -183,10 +184,10 @@ Admin and assignment button checks use the member data included with each intera
 The `/report` command returns a file with columns:
 
 ```
-date,task assigned,user,completion status
+date,task assigned,user id,username,completion status
 ```
 
-User values are Discord user IDs.
+User ID values are Discord snowflakes. Usernames are resolved from Discord when the report is generated.
 
 ## Error Handling
 

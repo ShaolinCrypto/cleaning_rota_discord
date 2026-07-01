@@ -194,6 +194,77 @@ export function setAssignmentMessage(
   });
 }
 
+export function getAssignmentsForWeek(weekDate: string): AssignmentWithDetails[] {
+  return wrapDatabaseError(() => {
+    const db = getDatabase();
+    const rows = db
+      .prepare(
+        `
+        SELECT a.*, t.title AS task_title, t.description AS task_description
+        FROM assignments a
+        INNER JOIN tasks t ON t.id = a.task_id
+        WHERE a.week_date = ?
+        ORDER BY a.id ASC
+      `,
+      )
+      .all(weekDate) as unknown as AssignmentWithDetailsRow[];
+
+    return rows.map(mapAssignmentWithDetails);
+  });
+}
+
+export function deleteAssignmentsForWeek(weekDate: string): number {
+  return wrapDatabaseError(() => {
+    const db = getDatabase();
+    const result = db.prepare('DELETE FROM assignments WHERE week_date = ?').run(weekDate);
+    return Number(result.changes);
+  });
+}
+
+async function deleteAssignmentMessages(
+  client: Client,
+  assignments: AssignmentWithDetails[],
+): Promise<void> {
+  for (const assignment of assignments) {
+    if (!assignment.messageId || !assignment.channelId) {
+      continue;
+    }
+
+    try {
+      const channel = await client.channels.fetch(assignment.channelId);
+      if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+        continue;
+      }
+
+      const message = await channel.messages.fetch(assignment.messageId);
+      await message.delete();
+    } catch (error) {
+      console.warn(`Could not delete assignment message ${assignment.id}:`, error);
+    }
+  }
+}
+
+export async function buildWeeklyRota(
+  client: Client,
+  channelId: string,
+  weekDate: string = getWeekDate(),
+): Promise<WeeklyAssignmentResult> {
+  const existing = getAssignmentsForWeek(weekDate);
+  const warnings: string[] = [];
+
+  if (existing.length > 0) {
+    warnings.push(`Replaced ${existing.length} existing assignment(s) for week ${weekDate}.`);
+    await deleteAssignmentMessages(client, existing);
+    deleteAssignmentsForWeek(weekDate);
+  }
+
+  const result = await postWeeklyAssignments(client, channelId, weekDate);
+  return {
+    assignments: result.assignments,
+    warnings: [...warnings, ...result.warnings],
+  };
+}
+
 export async function postWeeklyAssignments(
   client: Client,
   channelId: string,
@@ -235,21 +306,8 @@ export async function postWeeklyAssignments(
     result = createWeeklyAssignments(weekDate);
   } catch (error) {
     if (error instanceof ValidationError && error.message.includes('already been created')) {
-      const db = getDatabase();
-      const rows = db
-        .prepare(
-          `
-          SELECT a.*, t.title AS task_title, t.description AS task_description
-          FROM assignments a
-          INNER JOIN tasks t ON t.id = a.task_id
-          WHERE a.week_date = ?
-          ORDER BY a.id ASC
-        `,
-        )
-        .all(weekDate) as unknown as AssignmentWithDetailsRow[];
-
       return {
-        assignments: rows.map(mapAssignmentWithDetails),
+        assignments: getAssignmentsForWeek(weekDate),
         warnings: [`Assignments for week ${weekDate} already exist; reposting messages.`],
       };
     }

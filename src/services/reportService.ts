@@ -1,3 +1,4 @@
+import type { Client } from 'discord.js';
 import { getDatabase } from '../db';
 import { wrapDatabaseError } from '../utils/errors';
 import type { AssignmentStatus, ReportRow } from '../types';
@@ -16,7 +17,35 @@ function escapeCsvField(value: string): string {
   return value;
 }
 
-export function getReportRows(): ReportRow[] {
+async function resolveUsername(
+  client: Client,
+  userId: string,
+  cache: Map<string, string>,
+): Promise<string> {
+  const cached = cache.get(userId);
+  if (cached) {
+    return cached;
+  }
+
+  const cachedUser = client.users.cache.get(userId);
+  if (cachedUser) {
+    const name = cachedUser.username;
+    cache.set(userId, name);
+    return name;
+  }
+
+  try {
+    const user = await client.users.fetch(userId);
+    const name = user.username;
+    cache.set(userId, name);
+    return name;
+  } catch {
+    cache.set(userId, 'Unknown User');
+    return 'Unknown User';
+  }
+}
+
+export function getReportRows(): Omit<ReportRow, 'username'>[] {
   return wrapDatabaseError(() => {
     const db = getDatabase();
     const rows = db
@@ -37,21 +66,34 @@ export function getReportRows(): ReportRow[] {
     return rows.map((row) => ({
       date: row.week_date,
       taskAssigned: row.task_title,
-      user: row.user_id,
+      userId: row.user_id,
       completionStatus: row.status,
     }));
   });
 }
 
-export function generateCsvReport(): string {
+export async function getReportRowsWithUsernames(client: Client): Promise<ReportRow[]> {
   const rows = getReportRows();
-  const header = 'date,task assigned,user,completion status';
+  const usernameCache = new Map<string, string>();
+
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      username: await resolveUsername(client, row.userId, usernameCache),
+    })),
+  );
+}
+
+export async function generateCsvReport(client: Client): Promise<string> {
+  const rows = await getReportRowsWithUsernames(client);
+  const header = 'date,task assigned,user id,username,completion status';
   const lines = rows.map(
     (row) =>
       [
         escapeCsvField(row.date),
         escapeCsvField(row.taskAssigned),
-        escapeCsvField(row.user),
+        escapeCsvField(row.userId),
+        escapeCsvField(row.username),
         escapeCsvField(row.completionStatus),
       ].join(','),
   );

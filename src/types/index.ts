@@ -38,7 +38,8 @@ export interface WeeklyAssignmentResult {
 export interface ReportRow {
   date: string;
   taskAssigned: string;
-  user: string;
+  userId: string;
+  username: string;
   completionStatus: AssignmentStatus;
 }
 

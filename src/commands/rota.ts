@@ -1,6 +1,26 @@
 import type { ChatInputCommandInteraction } from 'discord.js';
+import { loadConfig } from '../config';
+import { buildWeeklyRota, getWeekDate } from '../services/assignmentService';
 import { addRotaUser, listRotaUsers, removeRotaUser } from '../services/rotaService';
 import { requireAdmin } from '../utils/permissions';
+
+function formatBuildResult(
+  weekDate: string,
+  rotaChannelId: string,
+  assignmentCount: number,
+  warnings: string[],
+): string {
+  const lines = [
+    `Built rota for week **${weekDate}**.`,
+    `Posted **${assignmentCount}** assignment(s) to <#${rotaChannelId}>.`,
+  ];
+
+  if (warnings.length > 0) {
+    lines.push('', ...warnings.map((warning) => `- ${warning}`));
+  }
+
+  return lines.join('\n');
+}
 
 export async function handleRotaCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   await requireAdmin(interaction);
@@ -21,6 +41,20 @@ export async function handleRotaCommand(interaction: ChatInputCommandInteraction
       removeRotaUser(user.id);
       await interaction.editReply({
         content: `Removed ${user} from the cleaning rota.`,
+      });
+      break;
+    }
+    case 'build': {
+      const config = loadConfig();
+      const weekDate = getWeekDate();
+      const result = await buildWeeklyRota(interaction.client, config.rotaChannelId, weekDate);
+      await interaction.editReply({
+        content: formatBuildResult(
+          weekDate,
+          config.rotaChannelId,
+          result.assignments.length,
+          result.warnings,
+        ),
       });
       break;
     }

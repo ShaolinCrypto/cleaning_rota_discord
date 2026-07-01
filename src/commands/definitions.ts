@@ -56,7 +56,12 @@ export const commandDefinitions = [
           option.setName('user').setDescription('Discord user to remove').setRequired(true),
         ),
     )
-    .addSubcommand((sub) => sub.setName('list').setDescription('List rota users')),
+    .addSubcommand((sub) => sub.setName('list').setDescription('List rota users'))
+    .addSubcommand((sub) =>
+      sub
+        .setName('build')
+        .setDescription('Generate and post this week\'s rota assignments now'),
+    ),
   new SlashCommandBuilder()
     .setName('report')
     .setDescription('Export assignment history as CSV (admin only)'),
