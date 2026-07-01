@@ -21,14 +21,18 @@ function optionalEnv(name: string): string | undefined {
 }
 
 export function loadConfig(): AppConfig {
+  const dbPort = Number.parseInt(process.env.DB_PORT ?? '3306', 10);
+
   return {
     discordToken: requireEnv('DISCORD_TOKEN'),
     clientId: requireEnv('CLIENT_ID'),
     rotaChannelId: requireEnv('ROTA_CHANNEL_ID'),
     binChannelId: requireEnv('BIN_CHANNEL_ID'),
-    databasePath:
-      process.env.DATABASE_PATH ??
-      (process.env.NODE_ENV === 'production' ? '/app/data/rota.db' : './data/rota.db'),
+    dbHost: requireEnv('DB_HOST'),
+    dbPort: Number.isNaN(dbPort) ? 3306 : dbPort,
+    dbName: requireEnv('DB_NAME'),
+    dbUser: requireEnv('DB_USER'),
+    dbPassword: requireEnv('DB_PASSWORD'),
     premisesId: optionalEnv('PREMISES_ID'),
   };
 }

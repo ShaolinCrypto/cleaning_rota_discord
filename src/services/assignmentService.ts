@@ -1,13 +1,14 @@
 import type { Client, TextChannel } from 'discord.js';
-import { getDatabase } from '../db';
+import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
+import { execute, queryOne, queryRows, withTransaction } from '../db';
 import { getActiveTasks } from './taskService';
-import { getRotationIndex, listRotaUsers } from './rotaService';
+import { getRotationIndex, listRotaUsers, setRotationIndex } from './rotaService';
 import { buildAssignmentButtons, buildAssignmentEmbed } from '../utils/embeds';
 import {
   BotError,
   DatabaseError,
   ValidationError,
-  wrapDatabaseError,
+  wrapDatabaseErrorAsync,
   NotFoundError,
 } from '../utils/errors';
 import type {
@@ -17,7 +18,7 @@ import type {
   WeeklyAssignmentResult,
 } from '../types';
 
-interface AssignmentRow {
+interface AssignmentRow extends RowDataPacket {
   id: number;
   week_date: string;
   task_id: number;
@@ -63,19 +64,17 @@ export function getWeekDate(date: Date = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function getAssignmentById(assignmentId: number): AssignmentWithDetails {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const row = db
-      .prepare(
-        `
+export async function getAssignmentById(assignmentId: number): Promise<AssignmentWithDetails> {
+  return wrapDatabaseErrorAsync(async () => {
+    const row = await queryOne<AssignmentWithDetailsRow>(
+      `
         SELECT a.*, t.title AS task_title, t.description AS task_description
         FROM assignments a
         INNER JOIN tasks t ON t.id = a.task_id
         WHERE a.id = ?
       `,
-      )
-      .get(assignmentId) as AssignmentWithDetailsRow | undefined;
+      [assignmentId],
+    );
 
     if (!row) {
       throw new NotFoundError('Assignment', assignmentId);
@@ -85,21 +84,22 @@ export function getAssignmentById(assignmentId: number): AssignmentWithDetails {
   });
 }
 
-export function hasAssignmentsForWeek(weekDate: string): boolean {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const row = db
-      .prepare('SELECT COUNT(*) AS count FROM assignments WHERE week_date = ?')
-      .get(weekDate) as { count: number };
-    return row.count > 0;
+export async function hasAssignmentsForWeek(weekDate: string): Promise<boolean> {
+  return wrapDatabaseErrorAsync(async () => {
+    const row = await queryOne<RowDataPacket & { count: number }>(
+      'SELECT COUNT(*) AS count FROM assignments WHERE week_date = ?',
+      [weekDate],
+    );
+    return Number(row?.count ?? 0) > 0;
   });
 }
 
-export function createWeeklyAssignments(weekDate: string = getWeekDate()): WeeklyAssignmentResult {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const users = listRotaUsers();
-    const tasks = getActiveTasks();
+export async function createWeeklyAssignments(
+  weekDate: string = getWeekDate(),
+): Promise<WeeklyAssignmentResult> {
+  return wrapDatabaseErrorAsync(async () => {
+    const users = await listRotaUsers();
+    const tasks = await getActiveTasks();
     const warnings: string[] = [];
 
     if (users.length === 0) {
@@ -110,7 +110,7 @@ export function createWeeklyAssignments(weekDate: string = getWeekDate()): Weekl
       throw new ValidationError('Cannot create assignments: no active tasks.');
     }
 
-    if (hasAssignmentsForWeek(weekDate)) {
+    if (await hasAssignmentsForWeek(weekDate)) {
       throw new ValidationError(`Assignments for week ${weekDate} have already been created.`);
     }
 
@@ -130,94 +130,89 @@ export function createWeeklyAssignments(weekDate: string = getWeekDate()): Weekl
       );
     }
 
-    let rotationIndex = getRotationIndex();
+    const rotationIndex = await getRotationIndex();
     const createdAt = new Date().toISOString();
-    const insert = db.prepare(`
-      INSERT INTO assignments (week_date, task_id, user_id, status, created_at)
-      VALUES (?, ?, ?, 'Assigned', ?)
-    `);
+    const createdIds = await withTransaction(async (connection: PoolConnection) => {
+      const ids: number[] = [];
 
-    const createdIds: number[] = [];
-
-    db.exec('BEGIN IMMEDIATE');
-    try {
       for (let slot = 0; slot < assignmentCount; slot += 1) {
         const user = users[(rotationIndex + slot) % users.length];
         const task = tasks[(rotationIndex + slot) % tasks.length];
 
-        const result = insert.run(weekDate, task.id, user.userId, createdAt);
-        createdIds.push(Number(result.lastInsertRowid));
+        const [result] = await connection.execute<import('mysql2/promise').ResultSetHeader>(
+          `
+            INSERT INTO assignments (week_date, task_id, user_id, status, created_at)
+            VALUES (?, ?, ?, 'Assigned', ?)
+          `,
+          [weekDate, task.id, user.userId, createdAt],
+        );
+        ids.push(result.insertId);
       }
 
-      db.prepare('UPDATE rota_state SET rotation_index = ? WHERE id = 1').run(
+      await connection.execute('UPDATE rota_state SET rotation_index = ? WHERE id = 1', [
         (rotationIndex + assignmentCount) % users.length,
-      );
-      db.exec('COMMIT');
-    } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
-    }
+      ]);
 
-    const assignments = createdIds.map((id) => getAssignmentById(id));
+      return ids;
+    });
+
+    const assignments = await Promise.all(createdIds.map((id) => getAssignmentById(id)));
     return { assignments, warnings };
   });
 }
 
-export function updateAssignmentStatus(
+export async function updateAssignmentStatus(
   assignmentId: number,
   status: AssignmentStatus,
-): AssignmentWithDetails {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const existing = db.prepare('SELECT id FROM assignments WHERE id = ?').get(assignmentId);
+): Promise<AssignmentWithDetails> {
+  return wrapDatabaseErrorAsync(async () => {
+    const existing = await queryOne<RowDataPacket>('SELECT id FROM assignments WHERE id = ?', [
+      assignmentId,
+    ]);
     if (!existing) {
       throw new NotFoundError('Assignment', assignmentId);
     }
 
-    db.prepare('UPDATE assignments SET status = ? WHERE id = ?').run(status, assignmentId);
+    await execute('UPDATE assignments SET status = ? WHERE id = ?', [status, assignmentId]);
     return getAssignmentById(assignmentId);
   });
 }
 
-export function setAssignmentMessage(
+export async function setAssignmentMessage(
   assignmentId: number,
   messageId: string,
   channelId: string,
-): void {
-  wrapDatabaseError(() => {
-    const db = getDatabase();
-    db.prepare('UPDATE assignments SET message_id = ?, channel_id = ? WHERE id = ?').run(
+): Promise<void> {
+  await wrapDatabaseErrorAsync(async () => {
+    await execute('UPDATE assignments SET message_id = ?, channel_id = ? WHERE id = ?', [
       messageId,
       channelId,
       assignmentId,
-    );
+    ]);
   });
 }
 
-export function getAssignmentsForWeek(weekDate: string): AssignmentWithDetails[] {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const rows = db
-      .prepare(
-        `
+export async function getAssignmentsForWeek(weekDate: string): Promise<AssignmentWithDetails[]> {
+  return wrapDatabaseErrorAsync(async () => {
+    const rows = await queryRows<AssignmentWithDetailsRow>(
+      `
         SELECT a.*, t.title AS task_title, t.description AS task_description
         FROM assignments a
         INNER JOIN tasks t ON t.id = a.task_id
         WHERE a.week_date = ?
         ORDER BY a.id ASC
       `,
-      )
-      .all(weekDate) as unknown as AssignmentWithDetailsRow[];
+      [weekDate],
+    );
 
     return rows.map(mapAssignmentWithDetails);
   });
 }
 
-export function deleteAssignmentsForWeek(weekDate: string): number {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const result = db.prepare('DELETE FROM assignments WHERE week_date = ?').run(weekDate);
-    return Number(result.changes);
+export async function deleteAssignmentsForWeek(weekDate: string): Promise<number> {
+  return wrapDatabaseErrorAsync(async () => {
+    const result = await execute('DELETE FROM assignments WHERE week_date = ?', [weekDate]);
+    return result.affectedRows;
   });
 }
 
@@ -249,13 +244,13 @@ export async function buildWeeklyRota(
   channelId: string,
   weekDate: string = getWeekDate(),
 ): Promise<WeeklyAssignmentResult> {
-  const existing = getAssignmentsForWeek(weekDate);
+  const existing = await getAssignmentsForWeek(weekDate);
   const warnings: string[] = [];
 
   if (existing.length > 0) {
     warnings.push(`Replaced ${existing.length} existing assignment(s) for week ${weekDate}.`);
     await deleteAssignmentMessages(client, existing);
-    deleteAssignmentsForWeek(weekDate);
+    await deleteAssignmentsForWeek(weekDate);
   }
 
   const result = await postWeeklyAssignments(client, channelId, weekDate);
@@ -303,11 +298,11 @@ export async function postWeeklyAssignments(
 
   let result: WeeklyAssignmentResult;
   try {
-    result = createWeeklyAssignments(weekDate);
+    result = await createWeeklyAssignments(weekDate);
   } catch (error) {
     if (error instanceof ValidationError && error.message.includes('already been created')) {
       return {
-        assignments: getAssignmentsForWeek(weekDate),
+        assignments: await getAssignmentsForWeek(weekDate),
         warnings: [`Assignments for week ${weekDate} already exist; reposting messages.`],
       };
     }
@@ -326,7 +321,7 @@ export async function postWeeklyAssignments(
         components,
       });
 
-      setAssignmentMessage(assignment.id, message.id, channel.id);
+      await setAssignmentMessage(assignment.id, message.id, channel.id);
       assignment.messageId = message.id;
       assignment.channelId = channel.id;
     } catch (error) {
@@ -370,7 +365,7 @@ export async function refreshAssignmentMessageForAll(
   client: Client,
   assignmentId: number,
 ): Promise<AssignmentWithDetails> {
-  const assignment = getAssignmentById(assignmentId);
+  const assignment = await getAssignmentById(assignmentId);
   await refreshAssignmentMessage(client, assignment);
   return assignment;
 }

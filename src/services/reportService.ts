@@ -1,9 +1,9 @@
-import type { Client } from 'discord.js';
-import { getDatabase } from '../db';
-import { wrapDatabaseError } from '../utils/errors';
+import { queryRows } from '../db';
+import { wrapDatabaseErrorAsync } from '../utils/errors';
 import type { AssignmentStatus, ReportRow } from '../types';
+import type { RowDataPacket } from 'mysql2/promise';
 
-interface AssignmentReportRow {
+interface AssignmentReportRow extends RowDataPacket {
   week_date: string;
   task_title: string;
   user_id: string;
@@ -17,8 +17,32 @@ function escapeCsvField(value: string): string {
   return value;
 }
 
+export async function getReportRows(): Promise<Omit<ReportRow, 'username'>[]> {
+  return wrapDatabaseErrorAsync(async () => {
+    const rows = await queryRows<AssignmentReportRow>(
+      `
+        SELECT
+          a.week_date,
+          t.title AS task_title,
+          a.user_id,
+          a.status
+        FROM assignments a
+        INNER JOIN tasks t ON t.id = a.task_id
+        ORDER BY a.week_date ASC, a.id ASC
+      `,
+    );
+
+    return rows.map((row) => ({
+      date: row.week_date,
+      taskAssigned: row.task_title,
+      userId: row.user_id,
+      completionStatus: row.status,
+    }));
+  });
+}
+
 async function resolveUsername(
-  client: Client,
+  client: import('discord.js').Client,
   userId: string,
   cache: Map<string, string>,
 ): Promise<string> {
@@ -45,35 +69,10 @@ async function resolveUsername(
   }
 }
 
-export function getReportRows(): Omit<ReportRow, 'username'>[] {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const rows = db
-      .prepare(
-        `
-        SELECT
-          a.week_date,
-          t.title AS task_title,
-          a.user_id,
-          a.status
-        FROM assignments a
-        INNER JOIN tasks t ON t.id = a.task_id
-        ORDER BY a.week_date ASC, a.id ASC
-      `,
-      )
-      .all() as unknown as AssignmentReportRow[];
-
-    return rows.map((row) => ({
-      date: row.week_date,
-      taskAssigned: row.task_title,
-      userId: row.user_id,
-      completionStatus: row.status,
-    }));
-  });
-}
-
-export async function getReportRowsWithUsernames(client: Client): Promise<ReportRow[]> {
-  const rows = getReportRows();
+export async function getReportRowsWithUsernames(
+  client: import('discord.js').Client,
+): Promise<ReportRow[]> {
+  const rows = await getReportRows();
   const usernameCache = new Map<string, string>();
 
   return Promise.all(
@@ -84,7 +83,7 @@ export async function getReportRowsWithUsernames(client: Client): Promise<Report
   );
 }
 
-export async function generateCsvReport(client: Client): Promise<string> {
+export async function generateCsvReport(client: import('discord.js').Client): Promise<string> {
   const rows = await getReportRowsWithUsernames(client);
   const header = 'date,task assigned,user id,username,completion status';
   const lines = rows.map(

@@ -18,8 +18,6 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
-RUN mkdir -p /app/data
-
 ENV NODE_ENV=production
 
 # Slash commands are registered at container start (needs DISCORD_TOKEN from runtime env).

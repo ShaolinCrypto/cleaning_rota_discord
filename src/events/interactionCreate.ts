@@ -9,6 +9,7 @@ import {
 import { handleCommand } from '../commands';
 import { handleBinsSlashCommand, isBinsCommand } from '../commands/bin';
 import { handlePingSlashCommand, isPingCommand } from '../commands/ping';
+import { handleHealthSlashCommand, isHealthCommand } from '../commands/health';
 import {
   handleTaskButton,
   handleTaskCommand,
@@ -34,7 +35,7 @@ async function handleAssignmentButtonInteraction(interaction: ButtonInteraction)
     return;
   }
 
-  const assignment = getAssignmentById(parsed.assignmentId);
+  const assignment = await getAssignmentById(parsed.assignmentId);
 
   switch (parsed.action) {
     case 'accept': {
@@ -44,7 +45,7 @@ async function handleAssignmentButtonInteraction(interaction: ButtonInteraction)
         throw new ValidationError('This assignment has already been accepted or completed.');
       }
 
-      const updated = updateAssignmentStatus(assignment.id, 'Accepted');
+      const updated = await updateAssignmentStatus(assignment.id, 'Accepted');
       await refreshAssignmentMessage(interaction.client, updated);
 
       await interaction.reply({
@@ -60,7 +61,7 @@ async function handleAssignmentButtonInteraction(interaction: ButtonInteraction)
         throw new ValidationError('You must accept the assignment before confirming completion.');
       }
 
-      const updated = updateAssignmentStatus(assignment.id, 'Complete');
+      const updated = await updateAssignmentStatus(assignment.id, 'Complete');
       await refreshAssignmentMessage(interaction.client, updated);
 
       await interaction.reply({
@@ -76,7 +77,7 @@ async function handleAssignmentButtonInteraction(interaction: ButtonInteraction)
         throw new ValidationError('This assignment cannot be marked as not complete.');
       }
 
-      const updated = updateAssignmentStatus(assignment.id, 'Not Complete');
+      const updated = await updateAssignmentStatus(assignment.id, 'Not Complete');
       await refreshAssignmentMessage(interaction.client, updated);
 
       await interaction.reply({
@@ -122,6 +123,11 @@ export function registerInteractionCreateEvent(client: Client): void {
 
         if (isPingCommand(commandInteraction.commandName)) {
           await handlePingSlashCommand(commandInteraction);
+          return;
+        }
+
+        if (isHealthCommand(commandInteraction.commandName)) {
+          await handleHealthSlashCommand(commandInteraction);
           return;
         }
 

@@ -11,16 +11,19 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
 - Assignment embeds posted to a configured channel
 - Status workflow: Assigned → Accepted → Complete (or Not Complete by admins)
 - CSV export via `/report`
-- SQLite persistence with automatic schema creation on startup (via Node.js built-in `node:sqlite`)
+- MySQL persistence with automatic schema creation on startup
 
 ### Leeds bins
 
 - `/bins` — upcoming Leeds bin collection dates via [bins.felixyeung.com](https://bins.felixyeung.com)
 - `/ping` — simple connectivity check (rota or bin channel)
+- `/health` — database connectivity and table status (rota or bin channel)
+
 ## Requirements
 
-- Node.js 22+ (uses the built-in `node:sqlite` module)
+- Node.js 22+
 - A Discord application with a bot token
+- A MySQL database (Northflank MySQL addon recommended for production)
 - Administrator permissions in your guild for management commands
 
 ## Setup
@@ -33,16 +36,7 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
 
 2. **Configure environment variables**
 
-   Copy `.env.example` to `.env` and fill in the values:
-
-   | Variable | Description |
-   | --- | --- |
-   | `DISCORD_TOKEN` | Bot token from the Discord Developer Portal |
-   | `CLIENT_ID` | Application client ID |
-   | `ROTA_CHANNEL_ID` | Channel for rota slash commands and weekly assignment posts |
-   | `BIN_CHANNEL_ID` | Channel where `/bins` can be used |
-   | `DATABASE_PATH` | Path to SQLite database file (default: `./data/rota.db` locally, `/app/data/rota.db` in production) |
-   | `PREMISES_ID` | Leeds premises ID for `/bins` (via bins.felixyeung.com) |
+   Copy `.env.example` to `.env` and fill in the values (see table below).
 
 3. **Register slash commands (optional locally)**
 
@@ -78,21 +72,35 @@ A Discord bot built with **discord.js v14** and **TypeScript** that manages a we
    docker run --env-file .env cleaning-rota-bot
    ```
 
-   The bot connects via the Discord gateway (not webhooks). No HTTP port is required. On startup it registers slash commands using your runtime `DISCORD_TOKEN`, then connects to Discord.
+   The bot connects via the Discord gateway (not webhooks). No HTTP port is required. On startup it registers slash commands, connects to MySQL, creates tables if needed, then connects to Discord.
 
-### Northflank persistence (important)
+### Northflank MySQL setup
 
-SQLite data must survive restarts and be shared across all bot instances:
+A mounted filesystem volume is **not** a MySQL database. Use a Northflank **MySQL addon**:
 
-1. **Run exactly 1 instance/replica** — multiple instances each have their own database file, so `/task list` and `/rota list` can appear empty even after a successful create/add on another instance.
-2. **Mount a volume** at `/app/data` and set `DATABASE_PATH=/app/data/rota.db`.
-3. Check startup logs for:
-   ```
-   Database initialized at /app/data/rota.db
-   Database contains 3 task(s) and 2 rota user(s).
-   ```
+1. Open your Northflank **project**
+2. Click **Create New** → **Addon**
+3. Choose **MySQL**
+4. Note the addon connection details (host, port, database, username, password)
+5. Link the addon secrets to your bot **service** as environment variables (see below)
+6. Deploy the bot service — tables are created automatically on first startup
 
-If the task/user counts are `0` after you know you added data, the volume is not mounted correctly or you are running more than one replica.
+Verify with `/health` in your rota or bin channel after deploy.
+
+### Environment variables
+
+| Variable | Description |
+| --- | --- |
+| `DISCORD_TOKEN` | Bot token from the Discord Developer Portal |
+| `CLIENT_ID` | Application client ID |
+| `ROTA_CHANNEL_ID` | Channel for rota slash commands and weekly assignment posts |
+| `BIN_CHANNEL_ID` | Channel where `/bins` can be used |
+| `DB_HOST` | MySQL host (Northflank addon internal hostname, e.g. `mysql-addon`) |
+| `DB_PORT` | MySQL port (default `3306`) |
+| `DB_NAME` | MySQL database name |
+| `DB_USER` | MySQL username |
+| `DB_PASSWORD` | MySQL password |
+| `PREMISES_ID` | Leeds premises ID for `/bins` (via bins.felixyeung.com) |
 
 ## Slash Commands
 
@@ -111,18 +119,19 @@ If the task/user counts are `0` after you know you added data, the volume is not
 | `/rota build` | Generate and post this week's assignments now | Admin |
 | `/report` | Download CSV assignment history | Admin |
 
-### Leeds bins (use in `BIN_CHANNEL_ID` only)
+### Leeds bins & diagnostics
 
-| Command | Description | Permissions |
+| Command | Description | Channels |
 | --- | --- | --- |
-| `/bins` | Show upcoming Leeds bin collection dates | Everyone |
-| `/ping` | Test bot responsiveness | Everyone (rota or bin channel) |
+| `/bins` | Show upcoming Leeds bin collection dates | `BIN_CHANNEL_ID` only |
+| `/ping` | Test bot responsiveness | Rota or bin channel |
+| `/health` | Check MySQL connectivity and table row counts | Rota or bin channel |
 
 `/bins` requires `PREMISES_ID` and fetches data from:
 
 `https://bins.felixyeung.com/api/jobs?premises=<PREMISES_ID>`
 
-Rota commands (`/task`, `/rota`, `/report`) only work in `ROTA_CHANNEL_ID`. `/bins` only works in `BIN_CHANNEL_ID`. `/ping` works in either channel.
+Rota commands (`/task`, `/rota`, `/report`) only work in `ROTA_CHANNEL_ID`.
 
 ## Weekly Schedule
 
@@ -162,8 +171,8 @@ src/
   config.ts                # Environment and scheduler config
   commands/                # Slash command handlers (rota + bins)
   events/                  # Discord event handlers
-  services/                # Business logic (rota, bins, reports)
-  db/                      # SQLite initialization
+  services/                # Business logic (rota, bins, reports, health)
+  db/                      # MySQL connection and schema
   types/                   # Shared TypeScript types
   utils/                   # Permissions, embeds, bin formatting
 ```
@@ -198,6 +207,7 @@ The bot handles common failure cases including:
 - Duplicate rota users
 - Wrong channel for rota or bin commands
 - Missing or inaccessible rota channel
+- MySQL connection failures
 - Permission failures on commands and buttons
 - Database errors
 

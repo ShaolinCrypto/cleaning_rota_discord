@@ -43,7 +43,7 @@ export async function handleTaskCommand(interaction: ChatInputCommandInteraction
       break;
     case 'edit': {
       const taskId = interaction.options.getInteger('task_id', true);
-      const task = getTaskById(taskId);
+      const task = await getTaskById(taskId);
       await interaction.showModal(buildEditTaskModal(task));
       break;
     }
@@ -52,14 +52,14 @@ export async function handleTaskCommand(interaction: ChatInputCommandInteraction
       break;
     case 'remove': {
       const taskId = interaction.options.getInteger('task_id', true);
-      const task = removeTask(taskId);
+      const task = await removeTask(taskId);
       await interaction.editReply({
         embeds: [buildTaskConfirmationEmbed('removed', task)],
       });
       break;
     }
     case 'list': {
-      const tasks = listTasks(true);
+      const tasks = await listTasks(true);
       if (tasks.length === 0) {
         await interaction.editReply({ content: 'No tasks found.' });
         return;
@@ -84,7 +84,7 @@ async function replyTaskManage(
   interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction,
   selectedTaskId?: number,
 ): Promise<void> {
-  const tasks = listTasks(true);
+  const tasks = await listTasks(true);
   const payload = {
     embeds: [buildTaskManageEmbed(tasks, selectedTaskId)],
     components: buildTaskManageComponents(tasks, selectedTaskId),
@@ -111,14 +111,14 @@ export async function handleTaskModalSubmit(interaction: ModalSubmitInteraction)
     }
 
     await interaction.deferReply({ ephemeral: true });
-    const task = createTask(fields.title, fields.description);
+    const task = await createTask(fields.title, fields.description);
     await interaction.editReply({ embeds: [buildTaskConfirmationEmbed('created', task)] });
     return;
   }
 
   const taskId = parseTaskEditModalId(interaction.customId);
   if (taskId !== null) {
-    getTaskById(taskId);
+    await getTaskById(taskId);
 
     let fields;
     try {
@@ -128,7 +128,7 @@ export async function handleTaskModalSubmit(interaction: ModalSubmitInteraction)
     }
 
     await interaction.deferReply({ ephemeral: true });
-    const task = editTask(taskId, fields.title, fields.description);
+    const task = await editTask(taskId, fields.title, fields.description);
     await interaction.editReply({ embeds: [buildTaskConfirmationEmbed('updated', task)] });
     return;
   }
@@ -156,14 +156,14 @@ export async function handleTaskButton(interaction: ButtonInteraction): Promise<
 
   const editTaskId = parseTaskManageActionId(interaction.customId, TASK_MANAGE_EDIT_PREFIX);
   if (editTaskId !== null) {
-    const task = getTaskById(editTaskId);
+    const task = await getTaskById(editTaskId);
     await interaction.showModal(buildEditTaskModal(task));
     return;
   }
 
   const removeTaskId = parseTaskManageActionId(interaction.customId, TASK_MANAGE_REMOVE_PREFIX);
   if (removeTaskId !== null) {
-    const task = removeTask(removeTaskId);
+    const task = await removeTask(removeTaskId);
     await interaction.update({
       embeds: [buildTaskConfirmationEmbed('removed', task)],
       components: [],
@@ -186,7 +186,7 @@ export async function handleTaskSelectMenu(interaction: StringSelectMenuInteract
     throw new ValidationError('Invalid task selection.');
   }
 
-  getTaskById(selectedTaskId);
+  await getTaskById(selectedTaskId);
   await replyTaskManage(interaction, selectedTaskId);
 }
 

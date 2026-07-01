@@ -1,8 +1,9 @@
-import { getDatabase } from '../db';
-import { NotFoundError, ValidationError, wrapDatabaseError } from '../utils/errors';
+import { execute, queryOne, queryRows } from '../db';
+import { NotFoundError, ValidationError, wrapDatabaseErrorAsync } from '../utils/errors';
 import type { RotaUser } from '../types';
+import type { RowDataPacket } from 'mysql2/promise';
 
-interface RotaUserRow {
+interface RotaUserRow extends RowDataPacket {
   id: number;
   user_id: string;
   added_at: string;
@@ -16,65 +17,59 @@ function mapRotaUser(row: RotaUserRow): RotaUser {
   };
 }
 
-export function addRotaUser(userId: string): RotaUser {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const existing = db.prepare('SELECT * FROM rota_users WHERE user_id = ?').get(userId) as
-      | RotaUserRow
-      | undefined;
+export async function addRotaUser(userId: string): Promise<RotaUser> {
+  return wrapDatabaseErrorAsync(async () => {
+    const existing = await queryOne<RotaUserRow>('SELECT * FROM rota_users WHERE user_id = ?', [userId]);
 
     if (existing) {
       throw new ValidationError(`<@${userId}> is already on the rota.`);
     }
 
     const addedAt = new Date().toISOString();
-    const result = db.prepare('INSERT INTO rota_users (user_id, added_at) VALUES (?, ?)').run(userId, addedAt);
+    const result = await execute('INSERT INTO rota_users (user_id, added_at) VALUES (?, ?)', [
+      userId,
+      addedAt,
+    ]);
 
     return {
-      id: Number(result.lastInsertRowid),
+      id: result.insertId,
       userId,
       addedAt,
     };
   });
 }
 
-export function removeRotaUser(userId: string): RotaUser {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const existing = db.prepare('SELECT * FROM rota_users WHERE user_id = ?').get(userId) as
-      | RotaUserRow
-      | undefined;
+export async function removeRotaUser(userId: string): Promise<RotaUser> {
+  return wrapDatabaseErrorAsync(async () => {
+    const existing = await queryOne<RotaUserRow>('SELECT * FROM rota_users WHERE user_id = ?', [userId]);
 
     if (!existing) {
       throw new NotFoundError('Rota user', userId);
     }
 
-    db.prepare('DELETE FROM rota_users WHERE user_id = ?').run(userId);
+    await execute('DELETE FROM rota_users WHERE user_id = ?', [userId]);
     return mapRotaUser(existing);
   });
 }
 
-export function listRotaUsers(): RotaUser[] {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const rows = db.prepare('SELECT * FROM rota_users ORDER BY id ASC').all() as unknown as RotaUserRow[];
+export async function listRotaUsers(): Promise<RotaUser[]> {
+  return wrapDatabaseErrorAsync(async () => {
+    const rows = await queryRows<RotaUserRow>('SELECT * FROM rota_users ORDER BY id ASC');
     return rows.map(mapRotaUser);
   });
 }
 
-export function getRotationIndex(): number {
-  return wrapDatabaseError(() => {
-    const db = getDatabase();
-    const row = db.prepare('SELECT rotation_index FROM rota_state WHERE id = 1').get() as {
-      rotation_index: number;
-    };
-    return row.rotation_index;
+export async function getRotationIndex(): Promise<number> {
+  return wrapDatabaseErrorAsync(async () => {
+    const row = await queryOne<RowDataPacket & { rotation_index: number }>(
+      'SELECT rotation_index FROM rota_state WHERE id = 1',
+    );
+    return row?.rotation_index ?? 0;
   });
 }
 
-export function setRotationIndex(index: number): void {
-  wrapDatabaseError(() => {
-    const db = getDatabase();
-    db.prepare('UPDATE rota_state SET rotation_index = ? WHERE id = 1').run(index);
+export async function setRotationIndex(index: number): Promise<void> {
+  await wrapDatabaseErrorAsync(async () => {
+    await execute('UPDATE rota_state SET rotation_index = ? WHERE id = 1', [index]);
   });
 }

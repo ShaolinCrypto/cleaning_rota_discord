@@ -73,6 +73,10 @@ export const commandDefinitions = [
     .setName('ping')
     .setDescription('Test bot responsiveness')
     .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName('health')
+    .setDescription('Check database connectivity and table status')
+    .setDMPermission(false),
 ] as const;
 
 export async function registerSlashCommands(config: AppConfig): Promise<void> {

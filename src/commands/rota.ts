@@ -30,7 +30,7 @@ export async function handleRotaCommand(interaction: ChatInputCommandInteraction
   switch (subcommand) {
     case 'add': {
       const user = interaction.options.getUser('user', true);
-      addRotaUser(user.id);
+      await addRotaUser(user.id);
       await interaction.editReply({
         content: `Added ${user} to the cleaning rota.`,
       });
@@ -38,7 +38,7 @@ export async function handleRotaCommand(interaction: ChatInputCommandInteraction
     }
     case 'remove': {
       const user = interaction.options.getUser('user', true);
-      removeRotaUser(user.id);
+      await removeRotaUser(user.id);
       await interaction.editReply({
         content: `Removed ${user} from the cleaning rota.`,
       });
@@ -59,7 +59,7 @@ export async function handleRotaCommand(interaction: ChatInputCommandInteraction
       break;
     }
     case 'list': {
-      const users = listRotaUsers();
+      const users = await listRotaUsers();
       if (users.length === 0) {
         await interaction.editReply({ content: 'No users on the rota.' });
         return;

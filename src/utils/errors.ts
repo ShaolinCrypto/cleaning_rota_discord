@@ -52,3 +52,15 @@ export function wrapDatabaseError<T>(fn: () => T): T {
     throw new DatabaseError();
   }
 }
+
+export async function wrapDatabaseErrorAsync<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (isBotError(error)) {
+      throw error;
+    }
+    console.error('Database error:', error);
+    throw new DatabaseError();
+  }
+}

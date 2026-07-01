@@ -7,8 +7,8 @@ import { registerInteractionCreateEvent } from './events/interactionCreate';
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  initDatabase(config);
-  logDatabaseStats();
+  await initDatabase(config);
+  await logDatabaseStats();
 
   await registerSlashCommands(config);
 
@@ -19,15 +19,19 @@ async function main(): Promise<void> {
   registerReadyEvent(client, config.rotaChannelId);
   registerInteractionCreateEvent(client);
 
-  const shutdown = (): void => {
+  const shutdown = async (): Promise<void> => {
     console.log('Shutting down...');
-    closeDatabase();
+    await closeDatabase();
     client.destroy();
     process.exit(0);
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', () => {
+    void shutdown();
+  });
+  process.on('SIGTERM', () => {
+    void shutdown();
+  });
 
   await client.login(config.discordToken);
 }

@@ -48,7 +48,11 @@ export interface AppConfig {
   clientId: string;
   rotaChannelId: string;
   binChannelId: string;
-  databasePath: string;
+  dbHost: string;
+  dbPort: number;
+  dbName: string;
+  dbUser: string;
+  dbPassword: string;
   premisesId?: string;
 }
 
