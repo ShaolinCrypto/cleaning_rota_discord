@@ -53,6 +53,7 @@ export interface AppConfig {
   dbName: string;
   dbUser: string;
   dbPassword: string;
+  dbSsl: boolean;
   premisesId?: string;
 }
 

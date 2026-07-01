@@ -20,8 +20,26 @@ function optionalEnv(name: string): string | undefined {
   return trimmed || undefined;
 }
 
+function parseBooleanEnv(name: string): boolean | undefined {
+  const value = process.env[name];
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1') {
+    return true;
+  }
+  if (normalized === 'false' || normalized === '0') {
+    return false;
+  }
+
+  return undefined;
+}
+
 export function loadConfig(): AppConfig {
   const dbPort = Number.parseInt(process.env.DB_PORT ?? '3306', 10);
+  const dbSsl = parseBooleanEnv('DB_SSL') ?? parseBooleanEnv('TLS_ENABLED') ?? false;
 
   return {
     discordToken: requireEnv('DISCORD_TOKEN'),
@@ -33,6 +51,7 @@ export function loadConfig(): AppConfig {
     dbName: requireEnv('DB_NAME'),
     dbUser: requireEnv('DB_USER'),
     dbPassword: requireEnv('DB_PASSWORD'),
+    dbSsl,
     premisesId: optionalEnv('PREMISES_ID'),
   };
 }

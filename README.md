@@ -82,7 +82,7 @@ A mounted filesystem volume is **not** a MySQL database. Use a Northflank **MySQ
 2. Click **Create New** → **Addon**
 3. Choose **MySQL**
 4. Note the addon connection details (host, port, database, username, password)
-5. Link the addon secrets to your bot **service** as environment variables (see below)
+5. Link the addon secrets to your bot **service** as environment variables (see below). If the addon uses TLS, ensure `DB_SSL=true` or link `TLS_ENABLED` from the addon connection details.
 6. Deploy the bot service — tables are created automatically on first startup
 
 Verify with `/health` in your rota or bin channel after deploy.
@@ -100,6 +100,7 @@ Verify with `/health` in your rota or bin channel after deploy.
 | `DB_NAME` | MySQL database name |
 | `DB_USER` | MySQL username |
 | `DB_PASSWORD` | MySQL password |
+| `DB_SSL` | Set to `true` when connecting to a TLS-enabled MySQL addon (Northflank sets `TLS_ENABLED` when addon secrets are linked) |
 | `PREMISES_ID` | Leeds premises ID for `/bins` (via bins.felixyeung.com) |
 
 ## Slash Commands

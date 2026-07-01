@@ -7,10 +7,11 @@ import { registerInteractionCreateEvent } from './events/interactionCreate';
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  await initDatabase(config);
-  await logDatabaseStats();
 
   await registerSlashCommands(config);
+
+  await initDatabase(config);
+  await logDatabaseStats();
 
   const client = new Client({
     intents: [GatewayIntentBits.Guilds],

@@ -1,8 +1,26 @@
-import type { Pool, PoolConnection, ResultSetHeader, RowDataPacket, ExecuteValues } from 'mysql2/promise';
+import type { Pool, PoolConnection, PoolOptions, ResultSetHeader, RowDataPacket, ExecuteValues } from 'mysql2/promise';
 import mysql from 'mysql2/promise';
 import type { AppConfig } from '../types';
 
 let pool: Pool | null = null;
+
+function createPoolOptions(config: AppConfig): PoolOptions {
+  const options: PoolOptions = {
+    host: config.dbHost,
+    port: config.dbPort,
+    database: config.dbName,
+    user: config.dbUser,
+    password: config.dbPassword,
+    waitForConnections: true,
+    connectionLimit: 10,
+  };
+
+  if (config.dbSsl) {
+    options.ssl = { rejectUnauthorized: true };
+  }
+
+  return options;
+}
 
 const SCHEMA_STATEMENTS = [
   `
@@ -66,21 +84,14 @@ export async function initDatabase(config: AppConfig): Promise<void> {
     return;
   }
 
-  pool = mysql.createPool({
-    host: config.dbHost,
-    port: config.dbPort,
-    database: config.dbName,
-    user: config.dbUser,
-    password: config.dbPassword,
-    waitForConnections: true,
-    connectionLimit: 10,
-  });
+  pool = mysql.createPool(createPoolOptions(config));
 
   for (const statement of SCHEMA_STATEMENTS) {
     await pool.execute(statement);
   }
 
-  console.log(`Database initialized (MySQL @ ${config.dbHost}/${config.dbName})`);
+  const transport = config.dbSsl ? 'TLS' : 'plain';
+  console.log(`Database initialized (MySQL @ ${config.dbHost}/${config.dbName}, ${transport})`);
 }
 
 export function getPool(): Pool {

@@ -79,10 +79,15 @@ export const commandDefinitions = [
     .setDMPermission(false),
 ] as const;
 
+export function getSlashCommandNames(): string[] {
+  return commandDefinitions.map((command) => command.name);
+}
+
 export async function registerSlashCommands(config: AppConfig): Promise<void> {
   const rest = new REST({ version: '10' }).setToken(config.discordToken);
   const body = commandDefinitions.map((command) => command.toJSON());
+  const names = getSlashCommandNames();
 
   await rest.put(Routes.applicationCommands(config.clientId), { body });
-  console.log(`Registered ${body.length} global slash command(s).`);
+  console.log(`Registered ${body.length} global slash command(s): ${names.join(', ')}`);
 }
