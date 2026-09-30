@@ -149,8 +149,12 @@ export async function createWeeklyAssignments(
         ids.push(result.insertId);
       }
 
+      // When every user gets a task, assignmentCount === users.length and a plain
+      // `+ assignmentCount` advance wraps to the same index. Step by at least 1.
+      const rotationAdvance = assignmentCount % users.length || 1;
+
       await connection.execute('UPDATE rota_state SET rotation_index = ? WHERE id = 1', [
-        (rotationIndex + assignmentCount) % users.length,
+        (rotationIndex + rotationAdvance) % users.length,
       ]);
 
       return ids;
