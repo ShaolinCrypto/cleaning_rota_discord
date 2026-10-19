@@ -11,12 +11,36 @@ import {
   wrapDatabaseErrorAsync,
   NotFoundError,
 } from '../utils/errors';
+import { TIMEZONE } from '../config';
 import type {
   Assignment,
   AssignmentStatus,
   AssignmentWithDetails,
   WeeklyAssignmentResult,
 } from '../types';
+
+const WEEKDAY_OFFSET: Record<string, number> = {
+  Mon: 0,
+  Tue: 1,
+  Wed: 2,
+  Thu: 3,
+  Fri: 4,
+  Sat: 5,
+  Sun: 6,
+};
+
+function formatYmdInTimeZone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+function weekdayShortInTimeZone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(date).slice(0, 3);
+}
 
 interface AssignmentRow extends RowDataPacket {
   id: number;
@@ -55,13 +79,15 @@ function mapAssignmentWithDetails(row: AssignmentWithDetailsRow): AssignmentWith
   };
 }
 
-export function getWeekDate(date: Date = new Date()): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
+export function getWeekDate(date: Date = new Date(), timeZone: string = TIMEZONE): string {
+  const offset = WEEKDAY_OFFSET[weekdayShortInTimeZone(date, timeZone)] ?? 0;
+  let cursor = date;
+
+  for (let i = 0; i < offset; i += 1) {
+    cursor = new Date(cursor.getTime() - 86_400_000);
+  }
+
+  return formatYmdInTimeZone(cursor, timeZone);
 }
 
 export async function getAssignmentById(assignmentId: number): Promise<AssignmentWithDetails> {
@@ -130,14 +156,17 @@ export async function createWeeklyAssignments(
       );
     }
 
-    const rotationIndex = await getRotationIndex();
+    const rotationIndex = Number(await getRotationIndex()) || 0;
     const createdAt = new Date().toISOString();
-    const createdIds = await withTransaction(async (connection: PoolConnection) => {
+    const { ids: createdIds, nextRotationIndex } = await withTransaction(
+      async (connection: PoolConnection) => {
       const ids: number[] = [];
 
       for (let slot = 0; slot < assignmentCount; slot += 1) {
-        const user = users[(rotationIndex + slot) % users.length];
-        const task = tasks[(rotationIndex + slot) % tasks.length];
+        const userIndex = (rotationIndex + slot) % users.length;
+        const taskIndex = (rotationIndex + slot) % tasks.length;
+        const user = users[userIndex];
+        const task = tasks[taskIndex];
 
         const [result] = await connection.execute<import('mysql2/promise').ResultSetHeader>(
           `
@@ -152,13 +181,20 @@ export async function createWeeklyAssignments(
       // When every user gets a task, assignmentCount === users.length and a plain
       // `+ assignmentCount` advance wraps to the same index. Step by at least 1.
       const rotationAdvance = assignmentCount % users.length || 1;
+      const nextRotationIndex = (rotationIndex + rotationAdvance) % users.length;
 
       await connection.execute('UPDATE rota_state SET rotation_index = ? WHERE id = 1', [
-        (rotationIndex + rotationAdvance) % users.length,
+        nextRotationIndex,
       ]);
 
-      return ids;
-    });
+      return { ids, nextRotationIndex };
+    },
+    );
+
+    console.log(
+      `Rota assignments for ${weekDate}: rotation ${rotationIndex} -> ${nextRotationIndex} ` +
+        `(${assignmentCount} slot(s), ${users.length} user(s), ${tasks.length} task(s)).`,
+    );
 
     const assignments = await Promise.all(createdIds.map((id) => getAssignmentById(id)));
     return { assignments, warnings };
@@ -305,9 +341,11 @@ export async function postWeeklyAssignments(
     result = await createWeeklyAssignments(weekDate);
   } catch (error) {
     if (error instanceof ValidationError && error.message.includes('already been created')) {
+      const warning = `Assignments for week ${weekDate} already exist; reposting messages (rotation not advanced).`;
+      console.warn(warning);
       return {
         assignments: await getAssignmentsForWeek(weekDate),
-        warnings: [`Assignments for week ${weekDate} already exist; reposting messages.`],
+        warnings: [warning],
       };
     }
     throw error;

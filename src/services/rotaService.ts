@@ -64,7 +64,7 @@ export async function getRotationIndex(): Promise<number> {
     const row = await queryOne<RowDataPacket & { rotation_index: number }>(
       'SELECT rotation_index FROM rota_state WHERE id = 1',
     );
-    return row?.rotation_index ?? 0;
+    return Number(row?.rotation_index ?? 0);
   });
 }
 

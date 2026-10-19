@@ -160,7 +160,7 @@ Cron format: `minute hour day-of-month month day-of-week`
 
 - Rota users and active tasks are ordered by ID.
 - Each week, users receive tasks starting from a persisted rotation index.
-- The rotation index advances by the number of assignments created, so restarts do not reset fairness.
+- The rotation index advances after each new week’s assignments (by at least one step), so restarts do not reset fairness.
 - If there are more users than tasks (or vice versa), assignments are created up to the smaller count and a warning is logged.
 
 ## Project Structure

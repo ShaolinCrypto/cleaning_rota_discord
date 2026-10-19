@@ -19,6 +19,11 @@ export function startWeeklyScheduler(client: Client, rotaChannelId: string): voi
         console.log(
           `Posted ${result.assignments.length} assignment(s) for week ${weekDate}.`,
         );
+        for (const assignment of result.assignments) {
+          console.log(
+            `  - <@${assignment.userId}> -> ${assignment.taskTitle} (task #${assignment.taskId})`,
+          );
+        }
         for (const warning of result.warnings) {
           console.warn(warning);
         }
