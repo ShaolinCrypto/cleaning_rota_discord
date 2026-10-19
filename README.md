@@ -159,8 +159,9 @@ Cron format: `minute hour day-of-month month day-of-week`
 ## Rotation Logic
 
 - Rota users and active tasks are ordered by ID.
-- Each week, users receive tasks starting from a persisted rotation index.
+- Each week, the task list order is fixed and rota users rotate onto those tasks (starting from a persisted rotation index).
 - The rotation index advances after each new week’s assignments (by at least one step), so restarts do not reset fairness.
+- Over a full cycle, each user should take on each task once when user and task counts match.
 - If there are more users than tasks (or vice versa), assignments are created up to the smaller count and a warning is logged.
 
 ## Project Structure

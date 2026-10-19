@@ -2,7 +2,7 @@ import type { Client, TextChannel } from 'discord.js';
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { execute, queryOne, queryRows, withTransaction } from '../db';
 import { getActiveTasks } from './taskService';
-import { getRotationIndex, listRotaUsers, setRotationIndex } from './rotaService';
+import { getRotationIndex, listRotaUsers } from './rotaService';
 import { buildAssignmentButtons, buildAssignmentEmbed } from '../utils/embeds';
 import {
   BotError,
@@ -163,8 +163,9 @@ export async function createWeeklyAssignments(
       const ids: number[] = [];
 
       for (let slot = 0; slot < assignmentCount; slot += 1) {
+        // Tasks stay in a fixed order; rota users rotate onto each task slot.
+        const taskIndex = slot % tasks.length;
         const userIndex = (rotationIndex + slot) % users.length;
-        const taskIndex = (rotationIndex + slot) % tasks.length;
         const user = users[userIndex];
         const task = tasks[taskIndex];
 
